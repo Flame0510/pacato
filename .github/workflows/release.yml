@@ -53,7 +53,16 @@ jobs:
         with:
           tagName: v__VERSION__
           releaseName: "ZenTube v__VERSION__"
-          releaseBody: "Download the installer for your platform below."
+          releaseBody: |
+            Installers are attached below.
+
+            - **Windows**: `.exe` (NSIS installer) or `.msi`
+            - **macOS**: `.dmg` — pick `aarch64` (Apple Silicon) or `x64` (Intel)
+            - **Linux**: `.AppImage`, `.deb` or `.rpm`
+
+            > macOS may warn that the app is unsigned on first launch —
+            right-click the app and choose *Open*, or allow it in
+            *System Settings → Privacy & Security*.
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
