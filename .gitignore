@@ -1,0 +1,16 @@
+# Rust build artifacts
+src-tauri/target/
+
+# Tauri auto-generated files
+src-tauri/gen/
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Editor
+.vscode/
+.idea/
