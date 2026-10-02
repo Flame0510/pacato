@@ -27,6 +27,10 @@ with the operating system instead of bundling Chromium.
     (at most one sweep every 300 ms to keep CPU usage low).
 - **Forced interface language** — the YouTube UI language is pinned via
   the `PREF` cookie (defaults to Italian, see [Configuration](#configuration)).
+- **Auto-update** — on startup the app checks GitHub Releases for a newer
+  version. A small banner appears over the window: one click downloads,
+  verifies the minisign signature, installs and relaunches. See
+  [Auto-update](#auto-update).
 - **Bookmarks & settings persistence** — Tauri commands backed by JSON
   files in the user data directory (ready to be wired to menus/overlays).
 - **DevTools** — press `Cmd+Opt+I` (macOS) / `F12` (Windows/Linux) to
@@ -141,6 +145,37 @@ git push origin main --tags
 The workflow (`.github/workflows/release.yml`) creates a **draft GitHub
 Release** with all installers attached. Open the Releases page, review it
 and publish. No secrets or signing keys required.
+
+## Auto-update
+
+ZenTube ships with a self-updater based on [`tauri-plugin-updater`](https://v2.tauri.app/plugin/updater/):
+
+1. **5s after startup** the app fetches
+   `https://github.com/Flame0510/zentube/releases/latest/download/latest.json`
+   (generated automatically by CI on every release).
+2. If the announced version is newer, a small frameless banner appears at
+   the top of the window: **Install & Relaunch** / **Not now**.
+3. On confirm the app downloads the update, **verifies its minisign
+   signature** against the public key embedded in the binary, installs it
+   and relaunches.
+
+The signing key pair was generated with `cargo tauri signer generate`.
+CI signs the updater artifacts (`latest.json`, `*.tar.gz`, `*.sig`, …)
+via the `TAURI_SIGNING_PRIVATE_KEY` / `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
+repository secrets — **never commit the private key**.
+
+> ⚠️ Losing the private key means you cannot sign future updates; users
+> would need to reinstall manually. Back it up (`~/.tauri/zentube.key`).
+
+### Fully automatic updates (optional)
+
+Set the environment variable `ZENTUBE_AUTO_UPDATE=1` to skip the banner
+and install+relaunch automatically as soon as an update is detected:
+
+```bash
+ZENTUBE_AUTO_UPDATE=1 open -a ZenTube   # macOS (open drops env vars, use:
+ZENTUBE_AUTO_UPDATE=1 /Applications/ZenTube.app/Contents/MacOS/zentube)
+```
 
 ## Configuration
 

@@ -50,6 +50,10 @@ const UPDATE_CHECK_DELAY_SECS: u64 = 5;
 struct PendingUpdate(Mutex<Option<tauri_plugin_updater::Update>>);
 
 /// Checks GitHub for a newer release; shows the banner window if found.
+///
+/// If the `ZENTUBE_AUTO_UPDATE=1` environment variable is set (useful for
+/// headless testing or "fully automatic" setups), the update is downloaded
+/// and installed immediately instead of showing the banner.
 async fn check_for_update(app: &tauri::AppHandle) -> Result<Option<String>, String> {
     let updater = app.updater().map_err(|e| e.to_string())?;
     let update = updater.check().await.map_err(|e| e.to_string())?;
@@ -61,12 +65,49 @@ async fn check_for_update(app: &tauri::AppHandle) -> Result<Option<String>, Stri
             .0
             .lock()
             .expect("update state poisoned") = Some(update);
-        show_update_banner(app, &version).map_err(|e| e.to_string())?;
+
+        if std::env::var("ZENTUBE_AUTO_UPDATE").as_deref() == Ok("1") {
+            log::info!("[ZenTube] ZENTUBE_AUTO_UPDATE=1 — installing automatically");
+            install_pending_update(app).await?;
+        } else {
+            show_update_banner(app, &version).map_err(|e| e.to_string())?;
+        }
         Ok(Some(version))
     } else {
         log::info!("[ZenTube] up to date");
         Ok(None)
     }
+}
+
+/// Downloads, verifies and installs the pending update, then relaunches.
+async fn install_pending_update(app: &tauri::AppHandle) -> Result<(), String> {
+    let state = app.state::<PendingUpdate>();
+    let update = {
+        let mut guard = state
+            .0
+            .lock()
+            .map_err(|_| "update state poisoned".to_string())?;
+        guard.take()
+    }
+    .ok_or_else(|| "No update available".to_string())?;
+
+    log::info!("[ZenTube] downloading update v{}…", update.version);
+    update
+        .download_and_install(
+            |chunk, total| {
+                log::info!(
+                    "[ZenTube] downloaded {} of {} bytes",
+                    chunk,
+                    total.unwrap_or(0)
+                );
+            },
+            || log::info!("[ZenTube] download complete"),
+        )
+        .await
+        .map_err(|e| format!("Update failed: {e}"))?;
+
+    log::info!("[ZenTube] update installed — relaunching");
+    app.restart();
 }
 
 /// Opens a small frameless banner window anchored to the top-center of
@@ -276,33 +317,7 @@ async fn get_update_info(
 /// Downloads, verifies and installs the pending update, then relaunches.
 #[tauri::command]
 async fn install_update(app: tauri::AppHandle) -> Result<(), String> {
-    let state = app.state::<PendingUpdate>();
-    let update = {
-        let mut guard = state
-            .0
-            .lock()
-            .map_err(|_| "update state poisoned".to_string())?;
-        guard.take()
-    }
-    .ok_or_else(|| "No update available".to_string())?;
-
-    log::info!("[ZenTube] downloading update v{}…", update.version);
-    update
-        .download_and_install(
-            |chunk, total| {
-                log::info!(
-                    "[ZenTube] downloaded {} of {} bytes",
-                    chunk,
-                    total.unwrap_or(0)
-                );
-            },
-            || log::info!("[ZenTube] download complete"),
-        )
-        .await
-        .map_err(|e| format!("Update failed: {e}"))?;
-
-    log::info!("[ZenTube] update installed — relaunching");
-    app.restart();
+    install_pending_update(&app).await
 }
 
 /// Closes the banner window ("Not now").
