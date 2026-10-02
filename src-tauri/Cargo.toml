@@ -1,6 +1,6 @@
 [package]
 name = "zentube"
-version = "1.1.0"
+version = "1.1.1"
 description = "The calm way to watch YouTube — a lightweight native desktop app with ad blocking"
 authors = ["Michele Tornello"]
 license = "MIT"

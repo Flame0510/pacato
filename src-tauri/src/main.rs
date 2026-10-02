@@ -1,3 +1,8 @@
+// Prevents an extra console window on Windows in release builds.
+// DO NOT REMOVE — without this, running the .exe opens a terminal
+// window that stays attached to the app.
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 //! ZenTube — the calm way to watch YouTube.
 //!
 //! A lightweight, native, cross-platform YouTube desktop app built with
