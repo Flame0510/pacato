@@ -30,7 +30,12 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
-use tauri::{Manager, State};
+use tauri::{
+    menu::{Menu, MenuItem},
+    tray::TrayIconBuilder,
+    Manager, State,
+};
+use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_updater::UpdaterExt;
 
 /// Language forced for the YouTube interface.
@@ -54,12 +59,15 @@ const UPDATE_CHECK_DELAY_SECS: u64 = 5;
 /// confirms the installation from the banner.
 struct PendingUpdate(Mutex<Option<tauri_plugin_updater::Update>>);
 
-/// Checks GitHub for a newer release; shows the banner window if found.
+/// Checks GitHub for a newer release.
 ///
-/// If the `ZENTUBE_AUTO_UPDATE=1` environment variable is set (useful for
-/// headless testing or "fully automatic" setups), the update is downloaded
-/// and installed immediately instead of showing the banner.
-async fn check_for_update(app: &tauri::AppHandle) -> Result<Option<String>, String> {
+/// * `manual == false` (startup check): if an update exists, show the
+///   banner — unless `ZENTUBE_AUTO_UPDATE=1`, which installs silently.
+///   When already up to date, nothing is shown.
+/// * `manual == true` (tray menu): same as above, but a native dialog
+///   confirms when the app is already on the latest version, and the
+///   banner is force-shown even if it was dismissed earlier.
+async fn check_for_update(app: &tauri::AppHandle, manual: bool) -> Result<Option<String>, String> {
     let updater = app.updater().map_err(|e| e.to_string())?;
     let update = updater.check().await.map_err(|e| e.to_string())?;
 
@@ -71,15 +79,25 @@ async fn check_for_update(app: &tauri::AppHandle) -> Result<Option<String>, Stri
             .lock()
             .expect("update state poisoned") = Some(update);
 
-        if std::env::var("ZENTUBE_AUTO_UPDATE").as_deref() == Ok("1") {
+        if !manual && std::env::var("ZENTUBE_AUTO_UPDATE").as_deref() == Ok("1") {
             log::info!("[ZenTube] ZENTUBE_AUTO_UPDATE=1 — installing automatically");
             install_pending_update(app).await?;
         } else {
+            // Force-show: recreates the banner even if it was dismissed.
             show_update_banner(app, &version).map_err(|e| e.to_string())?;
         }
         Ok(Some(version))
     } else {
         log::info!("[ZenTube] up to date");
+        if manual {
+            let current = app.package_info().version.clone();
+            app.dialog()
+                .message(format!(
+                    "You're on the latest version of ZenTube (v{current})."
+                ))
+                .title("Check for Updates")
+                .show(|_| ());
+        }
         Ok(None)
     }
 }
@@ -335,6 +353,53 @@ async fn dismiss_update_banner(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 // ---------------------------------------------------------------------------
+// Tray icon (menu bar on macOS, system tray on Windows/Linux)
+// ---------------------------------------------------------------------------
+
+/// Builds the tray icon with the "Check for Updates…" and "Quit" menu.
+fn build_tray(app: &tauri::App) -> tauri::Result<()> {
+    let check = MenuItem::with_id(app, "check-updates", "Check for Updates…", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit ZenTube", true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&check, &quit])?;
+
+    let mut tray = TrayIconBuilder::with_id("main-tray")
+        .menu(&menu)
+        .tooltip("ZenTube")
+        .show_menu_on_left_click(true);
+
+    if let Some(icon) = app.default_window_icon() {
+        tray = tray.icon(icon.clone());
+    }
+
+    tray.build(app)?;
+
+    app.on_menu_event(|app, event| match event.id().as_ref() {
+        "check-updates" => {
+            log::info!("[ZenTube] manual update check requested");
+            let handle = app.clone();
+            tauri::async_runtime::spawn(async move {
+                match check_for_update(&handle, true).await {
+                    Ok(Some(v)) => log::info!("[ZenTube] manual check: v{v} available"),
+                    Ok(None) => {}
+                    Err(e) => {
+                        log::error!("[ZenTube] manual check failed: {e}");
+                        handle
+                            .dialog()
+                            .message(format!("Update check failed:\n{e}"))
+                            .title("Check for Updates")
+                            .show(|_| ());
+                    }
+                }
+            });
+        }
+        "quit" => app.exit(0),
+        _ => {}
+    });
+
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
 // App entry point
 // ---------------------------------------------------------------------------
 
@@ -349,13 +414,16 @@ fn main() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_dialog::init())
         .manage(PendingUpdate(Mutex::new(None)))
         .setup(|app| {
+            build_tray(app)?;
+
             // Check for updates a few seconds after launch.
             let handle = app.app_handle().clone();
             tauri::async_runtime::spawn(async move {
                 tokio::time::sleep(std::time::Duration::from_secs(UPDATE_CHECK_DELAY_SECS)).await;
-                match check_for_update(&handle).await {
+                match check_for_update(&handle, false).await {
                     Ok(Some(v)) => log::info!("[ZenTube] update check: v{v} available"),
                     Ok(None) => {}
                     Err(e) => log::warn!("[ZenTube] update check failed: {e}"),
