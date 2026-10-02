@@ -1,6 +1,6 @@
 [package]
 name = "zentube"
-version = "1.0.0"
+version = "1.1.0"
 description = "The calm way to watch YouTube — a lightweight native desktop app with ad blocking"
 authors = ["Michele Tornello"]
 license = "MIT"
@@ -12,12 +12,14 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = ["devtools"] }
+tauri-plugin-updater = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 chrono = { version = "0.4", features = ["serde"] }
 log = "0.4"
 env_logger = "0.11"
 dirs = "5"
+tokio = { version = "1", features = ["time"] }
 
 [features]
 default = ["custom-protocol"]

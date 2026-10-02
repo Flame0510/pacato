@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ZenTube Update</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #1a1a1a;
+      color: #f1f1f1;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      border-bottom: 1px solid #333;
+    }
+    .logo { width: 34px; height: 34px; flex-shrink: 0; }
+    .text { flex: 1; min-width: 0; }
+    .title { font-size: 13px; font-weight: 600; }
+    .subtitle { font-size: 12px; color: #aaa; margin-top: 2px; }
+    .status { font-size: 11px; color: #7bd97b; margin-top: 3px; min-height: 14px; }
+    button {
+      border: none;
+      border-radius: 18px;
+      padding: 8px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    #install { background: #ff0000; color: #fff; }
+    #install:hover { background: #cc0000; }
+    #install:disabled { opacity: 0.6; cursor: default; }
+    #later { background: transparent; color: #aaa; }
+    #later:hover { color: #fff; }
+  </style>
+</head>
+<body>
+  <svg class="logo" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+    <rect x="16" y="16" width="480" height="480" rx="110" ry="110" fill="#FF0000"/>
+    <path d="M 189 160 L 189 352 L 359 256 Z" fill="#FFFFFF"/>
+  </svg>
+  <div class="text">
+    <div class="title" id="ver">Update available</div>
+    <div class="subtitle">A new version of ZenTube is ready to install.</div>
+    <div class="status" id="status"></div>
+  </div>
+  <button id="install">Install &amp; Relaunch</button>
+  <button id="later">Not now</button>
+
+  <script>
+    const { invoke } = window.__TAURI__.core;
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const info = await invoke('get_update_info');
+        if (info && info.version) {
+          document.getElementById('ver').textContent =
+            'ZenTube ' + info.version + ' is available';
+        }
+      } catch (e) { /* banner still shows generic text */ }
+    });
+
+    document.getElementById('install').addEventListener('click', async (e) => {
+      const btn = e.target;
+      const status = document.getElementById('status');
+      btn.disabled = true;
+      btn.textContent = 'Downloading…';
+      status.textContent = '';
+      try {
+        await invoke('install_update');
+      } catch (err) {
+        status.textContent = 'Error: ' + err;
+        status.style.color = '#ff6b6b';
+        btn.disabled = false;
+        btn.textContent = 'Install & Relaunch';
+      }
+    });
+
+    document.getElementById('later').addEventListener('click', () => {
+      invoke('dismiss_update_banner');
+    });
+  </script>
+</body>
+</html>
