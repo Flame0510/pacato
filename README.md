@@ -29,8 +29,9 @@ with the operating system instead of bundling Chromium.
   the `PREF` cookie (defaults to Italian, see [Configuration](#configuration)).
 - **Auto-update** — on startup the app checks GitHub Releases for a newer
   version. A small banner appears over the window: one click downloads,
-  verifies the minisign signature, installs and relaunches. See
-  [Auto-update](#auto-update).
+  verifies the minisign signature, installs and relaunches. A tray icon
+  (menu bar / system tray) offers a manual **Check for Updates…** and
+  **Quit** at any time. See [Auto-update](#auto-update).
 - **Bookmarks & settings persistence** — Tauri commands backed by JSON
   files in the user data directory (ready to be wired to menus/overlays).
 - **DevTools** — press `Cmd+Opt+I` (macOS) / `F12` (Windows/Linux) to
