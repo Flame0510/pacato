@@ -7,20 +7,20 @@
     * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #1a1a1a;
-      color: #f1f1f1;
+      background: linear-gradient(135deg, #22356B 0%, #16224A 55%, #0E1730 100%);
+      color: #F5F8FF;
       height: 100vh;
       display: flex;
       align-items: center;
       gap: 14px;
       padding: 14px 16px;
-      border-bottom: 1px solid #333;
+      border-bottom: 1px solid rgba(95, 224, 200, 0.38);
     }
-    .logo { width: 34px; height: 34px; flex-shrink: 0; }
+    .logo { width: 36px; height: 36px; flex-shrink: 0; }
     .text { flex: 1; min-width: 0; }
-    .title { font-size: 13px; font-weight: 600; }
-    .subtitle { font-size: 12px; color: #aaa; margin-top: 2px; }
-    .status { font-size: 11px; color: #7bd97b; margin-top: 3px; min-height: 14px; }
+    .title { font-size: 13px; font-weight: 600; color: #FFFFFF; }
+    .subtitle { font-size: 12px; color: #AEB8CF; margin-top: 2px; }
+    .status { font-size: 11px; color: #5FE0C8; margin-top: 3px; min-height: 14px; }
     button {
       border: none;
       border-radius: 18px;
@@ -30,11 +30,11 @@
       cursor: pointer;
       flex-shrink: 0;
     }
-    #install { background: #2A9DB5; color: #fff; }
-    #install:hover { background: #217E9E; }
+    #install { background: linear-gradient(135deg, #3EC9B0, #2A9DB5); color: #FFFFFF; }
+    #install:hover { background: linear-gradient(135deg, #35B8A0, #217E9E); }
     #install:disabled { opacity: 0.6; cursor: default; }
-    #later { background: transparent; color: #aaa; }
-    #later:hover { color: #fff; }
+    #later { background: transparent; color: #AEB8CF; }
+    #later:hover { color: #FFFFFF; }
   </style>
 </head>
 <body>
@@ -86,7 +86,7 @@
         await invoke('install_update');
       } catch (err) {
         status.textContent = 'Error: ' + err;
-        status.style.color = '#ff6b6b';
+        status.style.color = '#FF9E9E';
         btn.disabled = false;
         btn.textContent = 'Install & Relaunch';
       }
