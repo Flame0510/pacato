@@ -30,8 +30,8 @@
       cursor: pointer;
       flex-shrink: 0;
     }
-    #install { background: #ff0000; color: #fff; }
-    #install:hover { background: #cc0000; }
+    #install { background: #2A9DB5; color: #fff; }
+    #install:hover { background: #217E9E; }
     #install:disabled { opacity: 0.6; cursor: default; }
     #later { background: transparent; color: #aaa; }
     #later:hover { color: #fff; }
@@ -39,8 +39,21 @@
 </head>
 <body>
   <svg class="logo" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-    <rect x="16" y="16" width="480" height="480" rx="110" ry="110" fill="#FF0000"/>
-    <path d="M 189 160 L 189 352 L 359 256 Z" fill="#FFFFFF"/>
+    <defs>
+      <linearGradient id="pbg" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#3EC9B0"/>
+        <stop offset="52%" stop-color="#2A9DB5"/>
+        <stop offset="100%" stop-color="#26407A"/>
+      </linearGradient>
+      <linearGradient id="pglow" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#ffffff"/>
+        <stop offset="100%" stop-color="#EAFBFF"/>
+      </linearGradient>
+    </defs>
+    <rect x="16" y="16" width="480" height="480" rx="116" fill="url(#pbg)"/>
+    <path d="M205 183c0-12 13-19 23-13l126 73c10 6 10 20 0 26l-126 73c-10 6-23-1-23-13V183z" fill="url(#pglow)" transform="translate(34 46.26) scale(0.82)"/>
+    <path d="M122 386q42-20 84 0t84 0t84 0" fill="none" stroke="#ffffff" stroke-opacity="0.62" stroke-width="13" stroke-linecap="round"/>
+    <path d="M122 424q42-20 84 0t84 0t84 0" fill="none" stroke="#ffffff" stroke-opacity="0.34" stroke-width="13" stroke-linecap="round"/>
   </svg>
   <div class="text">
     <div class="title" id="ver">Update available</div>
