@@ -3,7 +3,7 @@
 // window that stays attached to the app.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-//! ZenTube — the calm way to watch YouTube.
+//! Pacato — the calm way to watch YouTube.
 //!
 //! A lightweight, native, cross-platform YouTube desktop app built with
 //! Tauri 2.
@@ -62,7 +62,7 @@ struct PendingUpdate(Mutex<Option<tauri_plugin_updater::Update>>);
 /// Checks GitHub for a newer release.
 ///
 /// * `manual == false` (startup check): if an update exists, show the
-///   banner — unless `ZENTUBE_AUTO_UPDATE=1`, which installs silently.
+///   banner — unless `PACATO_AUTO_UPDATE=1`, which installs silently.
 ///   When already up to date, nothing is shown.
 /// * `manual == true` (tray menu): same as above, but a native dialog
 ///   confirms when the app is already on the latest version, and the
@@ -73,14 +73,14 @@ async fn check_for_update(app: &tauri::AppHandle, manual: bool) -> Result<Option
 
     if let Some(update) = update {
         let version = update.version.clone();
-        log::info!("[ZenTube] update available: v{version}");
+        log::info!("[Pacato] update available: v{version}");
         *app.state::<PendingUpdate>()
             .0
             .lock()
             .expect("update state poisoned") = Some(update);
 
-        if !manual && std::env::var("ZENTUBE_AUTO_UPDATE").as_deref() == Ok("1") {
-            log::info!("[ZenTube] ZENTUBE_AUTO_UPDATE=1 — installing automatically");
+        if !manual && std::env::var("PACATO_AUTO_UPDATE").as_deref() == Ok("1") {
+            log::info!("[Pacato] PACATO_AUTO_UPDATE=1 — installing automatically");
             install_pending_update(app).await?;
         } else {
             // Force-show: recreates the banner even if it was dismissed.
@@ -88,12 +88,12 @@ async fn check_for_update(app: &tauri::AppHandle, manual: bool) -> Result<Option
         }
         Ok(Some(version))
     } else {
-        log::info!("[ZenTube] up to date");
+        log::info!("[Pacato] up to date");
         if manual {
             let current = app.package_info().version.clone();
             app.dialog()
                 .message(format!(
-                    "You're on the latest version of ZenTube (v{current})."
+                    "You're on the latest version of Pacato (v{current})."
                 ))
                 .title("Check for Updates")
                 .show(|_| ());
@@ -114,22 +114,22 @@ async fn install_pending_update(app: &tauri::AppHandle) -> Result<(), String> {
     }
     .ok_or_else(|| "No update available".to_string())?;
 
-    log::info!("[ZenTube] downloading update v{}…", update.version);
+    log::info!("[Pacato] downloading update v{}…", update.version);
     update
         .download_and_install(
             |chunk, total| {
                 log::info!(
-                    "[ZenTube] downloaded {} of {} bytes",
+                    "[Pacato] downloaded {} of {} bytes",
                     chunk,
                     total.unwrap_or(0)
                 );
             },
-            || log::info!("[ZenTube] download complete"),
+            || log::info!("[Pacato] download complete"),
         )
         .await
         .map_err(|e| format!("Update failed: {e}"))?;
 
-    log::info!("[ZenTube] update installed — relaunching");
+    log::info!("[Pacato] update installed — relaunching");
     app.restart();
 }
 
@@ -158,14 +158,14 @@ fn show_update_banner(app: &tauri::AppHandle, version: &str) -> tauri::Result<()
         None => (100.0, 100.0),
     };
 
-    log::info!("[ZenTube] showing update banner for v{version} at ({x}, {y})");
+    log::info!("[Pacato] showing update banner for v{version} at ({x}, {y})");
 
     tauri::WebviewWindowBuilder::new(
         app,
         "update-banner",
         tauri::WebviewUrl::App("banner.html".into()),
     )
-    .title("ZenTube Update")
+    .title("Pacato Update")
     .inner_size(BANNER_W, BANNER_H)
     .position(x, y)
     .decorations(false)
@@ -212,7 +212,7 @@ pub struct Bookmark {
 fn data_dir() -> PathBuf {
     dirs::data_dir()
         .unwrap_or_else(|| PathBuf::from("."))
-        .join("zentube")
+        .join("pacato")
 }
 
 fn bookmarks_path() -> PathBuf {
@@ -359,12 +359,12 @@ async fn dismiss_update_banner(app: tauri::AppHandle) -> Result<(), String> {
 /// Builds the tray icon with the "Check for Updates…" and "Quit" menu.
 fn build_tray(app: &tauri::App) -> tauri::Result<()> {
     let check = MenuItem::with_id(app, "check-updates", "Check for Updates…", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "Quit ZenTube", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit Pacato", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&check, &quit])?;
 
     let mut tray = TrayIconBuilder::with_id("main-tray")
         .menu(&menu)
-        .tooltip("ZenTube")
+        .tooltip("Pacato")
         .show_menu_on_left_click(true);
 
     if let Some(icon) = app.default_window_icon() {
@@ -375,14 +375,14 @@ fn build_tray(app: &tauri::App) -> tauri::Result<()> {
 
     app.on_menu_event(|app, event| match event.id().as_ref() {
         "check-updates" => {
-            log::info!("[ZenTube] manual update check requested");
+            log::info!("[Pacato] manual update check requested");
             let handle = app.clone();
             tauri::async_runtime::spawn(async move {
                 match check_for_update(&handle, true).await {
-                    Ok(Some(v)) => log::info!("[ZenTube] manual check: v{v} available"),
+                    Ok(Some(v)) => log::info!("[Pacato] manual check: v{v} available"),
                     Ok(None) => {}
                     Err(e) => {
-                        log::error!("[ZenTube] manual check failed: {e}");
+                        log::error!("[Pacato] manual check failed: {e}");
                         handle
                             .dialog()
                             .message(format!("Update check failed:\n{e}"))
@@ -424,9 +424,9 @@ fn main() {
             tauri::async_runtime::spawn(async move {
                 tokio::time::sleep(std::time::Duration::from_secs(UPDATE_CHECK_DELAY_SECS)).await;
                 match check_for_update(&handle, false).await {
-                    Ok(Some(v)) => log::info!("[ZenTube] update check: v{v} available"),
+                    Ok(Some(v)) => log::info!("[Pacato] update check: v{v} available"),
                     Ok(None) => {}
-                    Err(e) => log::warn!("[ZenTube] update check failed: {e}"),
+                    Err(e) => log::warn!("[Pacato] update check failed: {e}"),
                 }
             });
             Ok(())
@@ -437,9 +437,9 @@ fn main() {
             if payload.url().as_str().contains("youtube.com") {
                 let js = ad_blocker::get_ad_blocker_js(YOUTUBE_LANGUAGE);
                 if let Err(e) = webview.eval(&js) {
-                    log::error!("[ZenTube] ad blocker injection failed: {e}");
+                    log::error!("[Pacato] ad blocker injection failed: {e}");
                 } else {
-                    log::info!("[ZenTube] ad blocker injected on {}", payload.url());
+                    log::info!("[Pacato] ad blocker injected on {}", payload.url());
                 }
             }
         })

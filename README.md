@@ -1,4 +1,4 @@
-# ZenTube
+# Pacato
 
 **The calm way to watch YouTube.** A lightweight, native, cross-platform
 YouTube desktop app with built-in ad blocking. Built with **Tauri 2**
@@ -41,7 +41,7 @@ with the operating system instead of bundling Chromium.
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                     ZenTube.app                     │
+│                     Pacato.app                     │
 │                                                     │
 │  ┌───────────────────────────────────────────────┐  │
 │  │        System WebView (WKWebView /            │  │
@@ -71,7 +71,7 @@ The only reliable approach — the one used by apps like "App for YouTube"
 ## Project structure
 
 ```
-zentube/
+pacato/
 ├── .github/workflows/release.yml # CI: builds installers on every v* tag
 ├── frontend/
 │   └── index.html                # Static fallback page (embedded in binary)
@@ -111,8 +111,8 @@ cargo tauri dev
 cargo tauri build
 
 # Artifacts end up in:
-#   src-tauri/target/release/bundle/macos/ZenTube.app
-#   src-tauri/target/release/bundle/dmg/ZenTube_1.0.0_aarch64.dmg
+#   src-tauri/target/release/bundle/macos/Pacato.app
+#   src-tauri/target/release/bundle/dmg/Pacato_1.2.0_aarch64.dmg
 #   src-tauri/target/release/bundle/deb/…   (Linux)
 #   src-tauri/target/release/bundle/msi/…   (Windows)
 ```
@@ -120,7 +120,7 @@ cargo tauri build
 Install on macOS:
 
 ```bash
-cp -R "src-tauri/target/release/bundle/macos/ZenTube.app" /Applications/
+cp -R "src-tauri/target/release/bundle/macos/Pacato.app" /Applications/
 ```
 
 Run tests:
@@ -149,10 +149,10 @@ and publish. No secrets or signing keys required.
 
 ## Auto-update
 
-ZenTube ships with a self-updater based on [`tauri-plugin-updater`](https://v2.tauri.app/plugin/updater/):
+Pacato ships with a self-updater based on [`tauri-plugin-updater`](https://v2.tauri.app/plugin/updater/):
 
 1. **5s after startup** the app fetches
-   `https://github.com/Flame0510/zentube/releases/latest/download/latest.json`
+   `https://github.com/Flame0510/pacato/releases/latest/download/latest.json`
    (generated automatically by CI on every release).
 2. If the announced version is newer, a small frameless banner appears at
    the top of the window: **Install & Relaunch** / **Not now**.
@@ -166,16 +166,16 @@ via the `TAURI_SIGNING_PRIVATE_KEY` / `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
 repository secrets — **never commit the private key**.
 
 > ⚠️ Losing the private key means you cannot sign future updates; users
-> would need to reinstall manually. Back it up (`~/.tauri/zentube.key`).
+> would need to reinstall manually. Back it up (`~/.tauri/pacato.key`).
 
 ### Fully automatic updates (optional)
 
-Set the environment variable `ZENTUBE_AUTO_UPDATE=1` to skip the banner
+Set the environment variable `PACATO_AUTO_UPDATE=1` to skip the banner
 and install+relaunch automatically as soon as an update is detected:
 
 ```bash
-ZENTUBE_AUTO_UPDATE=1 open -a ZenTube   # macOS (open drops env vars, use:
-ZENTUBE_AUTO_UPDATE=1 /Applications/ZenTube.app/Contents/MacOS/zentube)
+PACATO_AUTO_UPDATE=1 open -a Pacato   # macOS (open drops env vars, use:
+PACATO_AUTO_UPDATE=1 /Applications/Pacato.app/Contents/MacOS/pacato)
 ```
 
 ## Configuration
@@ -186,7 +186,7 @@ YouTube decides its language from (in order of precedence): the signed-in
 account settings, the `PREF` cookie, then the system locale
 (`Accept-Language` header sent by the WebView).
 
-ZenTube pins the language via the `PREF` cookie. To change it, edit
+Pacato pins the language via the `PREF` cookie. To change it, edit
 `src-tauri/src/main.rs`:
 
 ```rust

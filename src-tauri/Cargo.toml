@@ -1,10 +1,10 @@
 [package]
-name = "zentube"
-version = "1.1.2"
+name = "pacato"
+version = "1.2.0"
 description = "The calm way to watch YouTube — a lightweight native desktop app with ad blocking"
 authors = ["Michele Tornello"]
 license = "MIT"
-repository = ""
+repository = "https://github.com/Flame0510/pacato"
 edition = "2021"
 
 [build-dependencies]

@@ -2388,6 +2388,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "pacato"
+version = "1.2.0"
+dependencies = [
+ "chrono",
+ "dirs 5.0.1",
+ "env_logger",
+ "log",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-updater",
+ "tokio",
+]
+
+[[package]]
 name = "pango"
 version = "0.18.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5137,23 +5154,6 @@ dependencies = [
  "quote",
  "syn 3.0.6",
  "synstructure",
-]
-
-[[package]]
-name = "zentube"
-version = "1.1.2"
-dependencies = [
- "chrono",
- "dirs 5.0.1",
- "env_logger",
- "log",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-updater",
- "tokio",
 ]
 
 [[package]]

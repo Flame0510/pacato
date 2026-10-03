@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>ZenTube Update</title>
+  <title>Pacato Update</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
     body {
@@ -44,7 +44,7 @@
   </svg>
   <div class="text">
     <div class="title" id="ver">Update available</div>
-    <div class="subtitle">A new version of ZenTube is ready to install.</div>
+    <div class="subtitle">A new version of Pacato is ready to install.</div>
     <div class="status" id="status"></div>
   </div>
   <button id="install">Install &amp; Relaunch</button>
@@ -58,7 +58,7 @@
         const info = await invoke('get_update_info');
         if (info && info.version) {
           document.getElementById('ver').textContent =
-            'ZenTube ' + info.version + ' is available';
+            'Pacato ' + info.version + ' is available';
         }
       } catch (e) { /* banner still shows generic text */ }
     });

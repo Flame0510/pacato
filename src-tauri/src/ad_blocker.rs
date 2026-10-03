@@ -14,7 +14,7 @@
 
 /// CSS rules that hide ad containers, overlays and promoted content.
 const AD_BLOCKER_CSS: &str = r#"
-/* === ZenTube ad-blocking CSS === */
+/* === Pacato ad-blocking CSS === */
 .ytp-ad-module,
 .ytp-ad-player-overlay,
 .ytp-ad-image-overlay,
@@ -98,7 +98,7 @@ pub fn get_ad_blocker_js(language: Option<&str>) -> String {
         r#"(function() {{
   if (window.__YT_ADBLOCKER__) return;
   window.__YT_ADBLOCKER__ = true;
-  console.log('[ZenTube] Ad blocker active');
+  console.log('[Pacato] Ad blocker active');
 
   {language_snippet}
 
