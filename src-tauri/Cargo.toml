@@ -1,6 +1,6 @@
 [package]
 name = "pacato"
-version = "1.2.0"
+version = "1.2.1"
 description = "The calm way to watch YouTube — a lightweight native desktop app with ad blocking"
 authors = ["Michele Tornello"]
 license = "MIT"

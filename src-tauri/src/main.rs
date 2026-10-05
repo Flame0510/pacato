@@ -434,6 +434,10 @@ fn main() {
         // Inject the ad blocker into every YouTube page, including
         // client-side navigations triggered by page loads.
         .on_page_load(|webview, payload| {
+            // Set PACATO_NO_ADBLOCK=1 to disable injection (diagnostics).
+            if std::env::var("PACATO_NO_ADBLOCK").as_deref() == Ok("1") {
+                return;
+            }
             if payload.url().as_str().contains("youtube.com") {
                 let js = ad_blocker::get_ad_blocker_js(YOUTUBE_LANGUAGE);
                 if let Err(e) = webview.eval(&js) {

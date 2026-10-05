@@ -103,6 +103,7 @@ pub fn get_ad_blocker_js(language: Option<&str>) -> String {
   {language_snippet}
 
   var CSS = {css};
+  var SELECTORS = {selectors};
 
   function injectCSS() {{
     if (document.getElementById('yt-adblocker-style')) return;
@@ -112,7 +113,10 @@ pub fn get_ad_blocker_js(language: Option<&str>) -> String {
     (document.head || document.documentElement).appendChild(style);
   }}
 
-  var SELECTORS = {selectors};
+  function matchesAd(el) {{
+    if (!el || el.nodeType !== 1) return false;
+    try {{ return el.matches(SELECTORS); }} catch (e) {{ return false; }}
+  }}
 
   function removeAds() {{
     try {{
@@ -120,13 +124,30 @@ pub fn get_ad_blocker_js(language: Option<&str>) -> String {
     }} catch (e) {{}}
   }}
 
+  // True only if a mutation batch actually inserted an ad element. This is
+  // what keeps the main thread free during normal playback: speed changes
+  // (e.g. hold-to-2x) mutate the DOM constantly, but almost never add ads.
+  function addedAd(mutations) {{
+    for (var i = 0; i < mutations.length; i++) {{
+      var nodes = mutations[i].addedNodes;
+      for (var j = 0; j < nodes.length; j++) {{
+        var n = nodes[j];
+        if (n.nodeType !== 1) continue;
+        if (matchesAd(n)) return true;
+        try {{ if (n.querySelector && n.querySelector(SELECTORS)) return true; }} catch (e) {{}}
+      }}
+    }}
+    return false;
+  }}
+
   // Skip / fast-forward video ads: click "Skip", jump to the end, mute.
   function handlePlayerAds() {{
     try {{
-      var player = document.querySelector('.html5-video-player');
-      if (!player || !player.classList.contains('ad-showing')) return;
+      var player = document.querySelector('.html5-video-player.ad-showing');
+      if (!player) return;
 
-      var skip = document.querySelector('.ytp-ad-skip-button, .ytp-skip-ad-button, .ytp-ad-skip-button-modern, .ytp-ad-skip-button-container button');
+      var skip = player.querySelector('.ytp-ad-skip-button, .ytp-skip-ad-button, .ytp-ad-skip-button-modern, .ytp-ad-skip-button-container button')
+                 || document.querySelector('.ytp-ad-skip-button, .ytp-skip-ad-button, .ytp-ad-skip-button-modern');
       if (skip) skip.click();
 
       var video = player.querySelector('video');
@@ -140,12 +161,16 @@ pub fn get_ad_blocker_js(language: Option<&str>) -> String {
   function start() {{
     injectCSS();
     removeAds();
-    setInterval(function() {{ removeAds(); handlePlayerAds(); }}, 1000);
 
-    // Debounced observer: at most one sweep every 300 ms to keep CPU low.
+    // Cheap and frequent: only reacts while an ad is actually showing.
+    setInterval(handlePlayerAds, 800);
+    // Infrequent safety net for ad DOM that slips past the CSS rules.
+    setInterval(removeAds, 5000);
+
+    // Debounced observer that runs a sweep ONLY when an ad node is added.
     var scheduled = false;
-    var obs = new MutationObserver(function() {{
-      if (scheduled) return;
+    var obs = new MutationObserver(function(mutations) {{
+      if (scheduled || !addedAd(mutations)) return;
       scheduled = true;
       setTimeout(function() {{
         scheduled = false;
@@ -183,6 +208,13 @@ mod tests {
         assert!(js.contains("ytp-ad-module"));
         assert!(js.contains("handlePlayerAds"));
         assert!(js.contains("MutationObserver"));
+    }
+
+    #[test]
+    fn observer_sweeps_only_when_ads_are_added() {
+        let js = get_ad_blocker_js(None);
+        assert!(js.contains("addedAd"));
+        assert!(js.contains(".html5-video-player.ad-showing"));
     }
 
     #[test]
