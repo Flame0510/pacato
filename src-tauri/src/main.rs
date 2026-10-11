@@ -25,13 +25,17 @@
 //!   (bookmarks, settings) for future use by menus or overlays.
 
 mod ad_blocker;
+mod nav;
+mod pip;
+mod queue;
+mod theme;
 
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::{
-    menu::{Menu, MenuItem},
+    menu::{CheckMenuItem, Menu, MenuItem},
     tray::TrayIconBuilder,
     Manager, State,
 };
@@ -182,12 +186,19 @@ fn show_update_banner(app: &tauri::AppHandle, version: &str) -> tauri::Result<()
 // Local persistence (JSON files in the user's data directory)
 // ---------------------------------------------------------------------------
 
-/// Language… (kept near persistence helpers for discoverability)
+/// Persisted application state.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AppState {
     pub ad_blocker_enabled: bool,
     pub blocked_count: u64,
     pub last_updated: String,
+    /// Whether the Pacato skin is applied to YouTube.
+    #[serde(default = "default_true")]
+    pub pacato_theme: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 impl Default for AppState {
@@ -196,6 +207,7 @@ impl Default for AppState {
             ad_blocker_enabled: true,
             blocked_count: 0,
             last_updated: chrono::Utc::now().to_rfc3339(),
+            pacato_theme: true,
         }
     }
 }
@@ -358,9 +370,12 @@ async fn dismiss_update_banner(app: tauri::AppHandle) -> Result<(), String> {
 
 /// Builds the tray icon with the "Check for Updates…" and "Quit" menu.
 fn build_tray(app: &tauri::App) -> tauri::Result<()> {
+    let theme_on = load_state().pacato_theme;
+    let pip = MenuItem::with_id(app, "pip", "Picture-in-Picture", true, None::<&str>)?;
+    let theme = CheckMenuItem::with_id(app, "theme", "Pacato look", true, theme_on, None::<&str>)?;
     let check = MenuItem::with_id(app, "check-updates", "Check for Updates…", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit Pacato", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&check, &quit])?;
+    let menu = Menu::with_items(app, &[&pip, &theme, &check, &quit])?;
 
     let mut tray = TrayIconBuilder::with_id("main-tray")
         .menu(&menu)
@@ -373,7 +388,28 @@ fn build_tray(app: &tauri::App) -> tauri::Result<()> {
 
     tray.build(app)?;
 
-    app.on_menu_event(|app, event| match event.id().as_ref() {
+    let theme_item = theme.clone();
+    app.on_menu_event(move |app, event| match event.id().as_ref() {
+        "pip" => {
+            log::info!("[Pacato] PiP toggle requested");
+            if let Some(win) = app.get_webview_window("main") {
+                let _ = win.eval("window.__pacatoTogglePip && window.__pacatoTogglePip();");
+            }
+        }
+        "theme" => {
+            let mut st = load_state();
+            let on = !st.pacato_theme;
+            st.pacato_theme = on;
+            st.last_updated = chrono::Utc::now().to_rfc3339();
+            save_state(&st);
+            let _ = theme_item.set_checked(on);
+            if let Some(win) = app.get_webview_window("main") {
+                let _ = win.eval(&format!(
+                    "window.__pacatoApplyTheme && window.__pacatoApplyTheme({on});"
+                ));
+            }
+            log::info!("[Pacato] Pacato look toggled: {on}");
+        }
         "check-updates" => {
             log::info!("[Pacato] manual update check requested");
             let handle = app.clone();
@@ -400,6 +436,32 @@ fn build_tray(app: &tauri::App) -> tauri::Result<()> {
 }
 
 // ---------------------------------------------------------------------------
+// Native navigation gestures
+// ---------------------------------------------------------------------------
+
+/// Enables the native two-finger swipe back/forward gesture on macOS by
+/// flipping `allowsBackForwardNavigationGestures` on the underlying WKWebView.
+///
+/// Tauri does not expose this wry attribute, so we reach the platform webview
+/// through `with_webview` and message it directly with `objc`.
+#[cfg(target_os = "macos")]
+fn enable_swipe_navigation(app: &tauri::App) {
+    use objc::{msg_send, sel, sel_impl, runtime::Object};
+    if let Some(win) = app.get_webview_window("main") {
+        let _ = win.with_webview(|webview| {
+            let wk = webview.inner() as *mut Object;
+            unsafe {
+                let _: () = msg_send![wk, setAllowsBackForwardNavigationGestures: true];
+            }
+        });
+        log::info!("[Pacato] native swipe navigation enabled");
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn enable_swipe_navigation(_app: &tauri::App) {}
+
+// ---------------------------------------------------------------------------
 // App entry point
 // ---------------------------------------------------------------------------
 
@@ -418,6 +480,7 @@ fn main() {
         .manage(PendingUpdate(Mutex::new(None)))
         .setup(|app| {
             build_tray(app)?;
+            enable_swipe_navigation(app);
 
             // Check for updates a few seconds after launch.
             let handle = app.app_handle().clone();
@@ -434,17 +497,42 @@ fn main() {
         // Inject the ad blocker into every YouTube page, including
         // client-side navigations triggered by page loads.
         .on_page_load(|webview, payload| {
-            // Set PACATO_NO_ADBLOCK=1 to disable injection (diagnostics).
-            if std::env::var("PACATO_NO_ADBLOCK").as_deref() == Ok("1") {
+            if !payload.url().as_str().contains("youtube.com") {
                 return;
             }
-            if payload.url().as_str().contains("youtube.com") {
+            // Set PACATO_NO_ADBLOCK=1 to disable ad-blocking injection
+            // (diagnostics).
+            if std::env::var("PACATO_NO_ADBLOCK").as_deref() != Ok("1") {
                 let js = ad_blocker::get_ad_blocker_js(YOUTUBE_LANGUAGE);
                 if let Err(e) = webview.eval(&js) {
                     log::error!("[Pacato] ad blocker injection failed: {e}");
                 } else {
                     log::info!("[Pacato] ad blocker injected on {}", payload.url());
                 }
+            }
+            // Picture-in-Picture helper (button, toggle, auto-PiP, shortcut).
+            match webview.eval(pip::get_pip_js()) {
+                Ok(_) => log::info!("[Pacato] PiP script injected on {}", payload.url()),
+                Err(e) => log::error!("[Pacato] PiP script injection failed: {e}"),
+            }
+            // Back/forward controls and shortcuts.
+            if let Err(e) = webview.eval(nav::get_nav_js()) {
+                log::error!("[Pacato] nav script injection failed: {e}");
+            }
+            // "Coda" watch queue (add buttons, panel, auto-advance).
+            if let Err(e) = webview.eval(queue::get_coda_js()) {
+                log::error!("[Pacato] coda script injection failed: {e}");
+            } else {
+                log::info!("[Pacato] coda script injected on {}", payload.url());
+            }
+            // Optional Pacato skin for YouTube.
+            if let Err(e) = webview.eval(&theme::get_theme_js()) {
+                log::error!("[Pacato] theme script injection failed: {e}");
+            } else {
+                let on = load_state().pacato_theme;
+                let _ = webview.eval(&format!(
+                    "window.__pacatoApplyTheme && window.__pacatoApplyTheme({on});"
+                ));
             }
         })
         .invoke_handler(tauri::generate_handler![

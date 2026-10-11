@@ -1,6 +1,6 @@
 [package]
 name = "pacato"
-version = "1.2.1"
+version = "1.3.0"
 description = "The calm way to watch YouTube — a lightweight native desktop app with ad blocking"
 authors = ["Michele Tornello"]
 license = "MIT"
@@ -25,3 +25,6 @@ tokio = { version = "1", features = ["time"] }
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc = "0.2"
