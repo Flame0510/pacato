@@ -101,26 +101,18 @@ pub fn get_pip_js() -> &'static str {
     var b = document.createElement('button');
     b.id = 'pacato-pip-btn';
     b.type = 'button';
-    b.title = 'Picture-in-Picture (' + hint + ')';
-    b.style.cssText = 'position:fixed;z-index:2147483000;display:flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid rgba(255,255,255,.28);border-radius:10px;background:linear-gradient(135deg,rgba(62,201,176,.92),rgba(42,157,181,.92));color:#fff;font:600 12px/1 -apple-system,BlinkMacSystemFont,sans-serif;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .15s,filter .15s;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:0 4px 14px rgba(0,0,0,.35)';
+    b.className = 'pacato-act-btn';
+    b.setAttribute('data-tip', 'Picture-in-Picture (' + hint + ')');
+    b.style.position = 'fixed';
 
-    var svg = svgEl('svg', { width: '16', height: '16', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linejoin': 'round' });
+    var svg = svgEl('svg', { width: '20', height: '20', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linejoin': 'round' });
     svg.style.display = 'block';
     svg.appendChild(svgEl('rect', { x: '3', y: '4', width: '18', height: '14', rx: '2' }));
     svg.appendChild(svgEl('rect', { x: '12', y: '10.5', width: '7', height: '5', rx: '1', fill: 'currentColor', stroke: 'none' }));
 
-    var span = document.createElement('span');
-    span.textContent = 'PiP';
-
-    var kbd = document.createElement('kbd');
-    kbd.textContent = hint;
-    kbd.style.cssText = 'font:600 10px/1 -apple-system,sans-serif;padding:2px 5px;border-radius:5px;background:rgba(8,25,40,.30);color:#eafffb';
-
     b.appendChild(svg);
-    b.appendChild(span);
-    b.appendChild(kbd);
 
-    b.addEventListener('mousedown', function (e) { e.stopPropagation(); }, true);
+    b.addEventListener('mousedown', function (e) { e.preventDefault(); e.stopPropagation(); }, true);
     b.addEventListener('click', function (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -141,7 +133,7 @@ pub fn get_pip_js() -> &'static str {
       return;
     }
     b.style.display = 'flex';
-    b.style.left = (r.left + 12) + 'px';
+    b.style.left = (r.left + (r.width - 36) / 2) + 'px';
     b.style.top = (r.top + 12) + 'px';
   }
 

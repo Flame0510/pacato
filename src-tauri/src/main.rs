@@ -24,10 +24,10 @@
 //! * A small set of Tauri commands exposes local persistence
 //!   (bookmarks, settings) for future use by menus or overlays.
 
+mod actions;
 mod ad_blocker;
 mod nav;
 mod pip;
-mod queue;
 mod theme;
 
 use serde::{Deserialize, Serialize};
@@ -494,6 +494,21 @@ fn main() {
             });
             Ok(())
         })
+        // Hide Pacato's floating UI while the window is in fullscreen so the
+        // controls never sit on top of the video.
+        .on_window_event(|window, event| {
+            if window.label() != "main" {
+                return;
+            }
+            if let tauri::WindowEvent::Resized(_) = event {
+                if let Some(w) = window.app_handle().get_webview_window("main") {
+                    let fs = w.is_fullscreen().unwrap_or(false);
+                    let _ = w.eval(&format!(
+                        "document.documentElement.classList.toggle('pacato-fs', {fs});"
+                    ));
+                }
+            }
+        })
         // Inject the ad blocker into every YouTube page, including
         // client-side navigations triggered by page loads.
         .on_page_load(|webview, payload| {
@@ -519,11 +534,11 @@ fn main() {
             if let Err(e) = webview.eval(nav::get_nav_js()) {
                 log::error!("[Pacato] nav script injection failed: {e}");
             }
-            // "Coda" watch queue (add buttons, panel, auto-advance).
-            if let Err(e) = webview.eval(queue::get_coda_js()) {
-                log::error!("[Pacato] coda script injection failed: {e}");
+            // Native "Guarda più tardi" / "Elimina" bridges.
+            if let Err(e) = webview.eval(actions::get_actions_js()) {
+                log::error!("[Pacato] actions script injection failed: {e}");
             } else {
-                log::info!("[Pacato] coda script injected on {}", payload.url());
+                log::info!("[Pacato] actions script injected on {}", payload.url());
             }
             // Optional Pacato skin for YouTube.
             if let Err(e) = webview.eval(&theme::get_theme_js()) {

@@ -27,6 +27,20 @@ with the operating system instead of bundling Chromium.
     (at most one sweep every 300 ms to keep CPU usage low).
 - **Forced interface language** — the YouTube UI language is pinned via
   the `PREF` cookie (defaults to Italian, see [Configuration](#configuration)).
+- **Picture-in-Picture** — a native PiP button over the player, an
+  Arc-style auto-PiP when the window loses focus while a video plays, a
+  `Cmd/Ctrl+Shift+P` shortcut and a tray entry.
+- **Navigation** — floating back/forward controls, `Cmd+[` / `Cmd+]`,
+  `Alt+←` / `Alt+→`, native two-finger swipe on macOS, `Cmd/Ctrl+R` to
+  reload, plus extra collapsed-sidebar entries (**Guarda più tardi**,
+  **Cronologia**).
+- **Pacato skin** — an optional dark theme recoloured with the Pacato
+  palette. Toggle it from the tray (**Pacato look**); the choice is
+  persisted.
+- **Native actions on hover** — over a thumbnail a **Guarda più tardi**
+  toggle (icon reflects the saved state), and a **Elimina** button on
+  playlist rows (e.g. inside "Guarda più tardi"). These are thin bridges
+  that click YouTube's *own* controls, so the real state stays YouTube's.
 - **Auto-update** — on startup the app checks GitHub Releases for a newer
   version. A small banner appears over the window: one click downloads,
   verifies the minisign signature, installs and relaunches. A tray icon
@@ -73,12 +87,18 @@ The only reliable approach — the one used by apps like "App for YouTube"
 ```
 pacato/
 ├── .github/workflows/release.yml # CI: builds installers on every v* tag
+├── branding/                     # Logo concepts and icon sources
 ├── frontend/
-│   └── index.html                # Static fallback page (embedded in binary)
+│   ├── index.html                # Static fallback page (embedded in binary)
+│   └── banner.html               # Update banner window
 ├── src-tauri/
 │   ├── src/
-│   │   ├── main.rs               # App entry, window, commands, persistence
-│   │   └── ad_blocker.rs         # Ad-blocking userscript generator (+ tests)
+│   │   ├── main.rs               # App entry, window, tray, commands, persistence
+│   │   ├── ad_blocker.rs         # Ad-blocking userscript generator (+ tests)
+│   │   ├── pip.rs                # Picture-in-Picture userscript (+ tests)
+│   │   ├── nav.rs                # Back/forward, shortcuts, sidebar entries (+ tests)
+│   │   ├── theme.rs              # Pacato skin (CSS + toggler) (+ tests)
+│   │   └── actions.rs            # Native "Guarda più tardi" / "Elimina" (+ tests)
 │   ├── icons/                    # App icons for all platforms (generated)
 │   ├── build.rs                  # Tauri build script
 │   ├── Cargo.toml
@@ -112,7 +132,7 @@ cargo tauri build
 
 # Artifacts end up in:
 #   src-tauri/target/release/bundle/macos/Pacato.app
-#   src-tauri/target/release/bundle/dmg/Pacato_1.2.0_aarch64.dmg
+#   src-tauri/target/release/bundle/dmg/Pacato_1.3.0_aarch64.dmg
 #   src-tauri/target/release/bundle/deb/…   (Linux)
 #   src-tauri/target/release/bundle/msi/…   (Windows)
 ```
@@ -139,13 +159,14 @@ automatically by GitHub Actions every time a `v*` tag is pushed:
 git add -A && git commit -m "…"
 
 # 2. Tag and push
-git tag v1.0.1
-git push origin main --tags
+git tag v1.3.0
+git push origin master --tags
 ```
 
 The workflow (`.github/workflows/release.yml`) creates a **draft GitHub
 Release** with all installers attached. Open the Releases page, review it
-and publish. No secrets or signing keys required.
+and publish. Updater artifacts are signed in CI via the
+`TAURI_SIGNING_PRIVATE_KEY` / `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` secrets.
 
 ## Auto-update
 

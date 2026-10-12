@@ -5,7 +5,8 @@
 //! 1. A small floating **back / forward** control (bottom-left, hover-reveal).
 //! 2. Extra entries in the collapsed sidebar (mini guide): **Watch Later** and
 //!    **History**.
-//! 3. Keyboard shortcuts: `Cmd+[` / `Cmd+]` and `Alt+Left` / `Alt+Right`.
+//! 3. Keyboard shortcuts: `Cmd+[` / `Cmd+]`, `Alt+Left` / `Alt+Right`, and
+//!    `Cmd/Ctrl+R` to reload the page.
 //!
 //! The native macOS two-finger swipe between pages is enabled separately in
 //! Rust via `with_webview` (see `enable_swipe_navigation` in `main.rs`).
@@ -132,9 +133,32 @@ pub fn get_nav_js() -> &'static str {
     guide.appendChild(history);
   }
 
+  // Hide Pacato's floating UI in fullscreen (native window fullscreen adds
+  // `pacato-fs` from Rust; the DOM Fullscreen API adds `pacato-dfs`).
+  var FS_CSS = 'html.pacato-fs #pacato-nav,html.pacato-dfs #pacato-nav,'
+    + 'html.pacato-fs #pacato-pip-btn,html.pacato-dfs #pacato-pip-btn,'
+    + 'html.pacato-fs #pacato-actions,html.pacato-dfs #pacato-actions,'
+    + 'html.pacato-fs #pacato-actions-watch,html.pacato-dfs #pacato-actions-watch{display:none !important}';
+
+  function injectFsStyle() {
+    if (document.getElementById('pacato-fs-style')) return;
+    var s = document.createElement('style');
+    s.id = 'pacato-fs-style';
+    s.textContent = FS_CSS;
+    (document.head || document.documentElement).appendChild(s);
+  }
+  function syncFullscreen() {
+    var fs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.webkitCurrentFullScreenElement);
+    if (document.documentElement) document.documentElement.classList.toggle('pacato-dfs', fs);
+  }
+  document.addEventListener('fullscreenchange', syncFullscreen, true);
+  document.addEventListener('webkitfullscreenchange', syncFullscreen, true);
+
   function boot() {
     buildNav();
     ensureMiniEntries();
+    injectFsStyle();
+    syncFullscreen();
     setInterval(ensureMiniEntries, 2000);
   }
 
@@ -145,7 +169,9 @@ pub fn get_nav_js() -> &'static str {
   }
 
   window.addEventListener('keydown', function (e) {
-    if (e.metaKey && !e.shiftKey && !e.altKey && e.key === '[') {
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.key === 'r' || e.key === 'R')) {
+      e.preventDefault(); window.location.reload();
+    } else if (e.metaKey && !e.shiftKey && !e.altKey && e.key === '[') {
       e.preventDefault(); history.back();
     } else if (e.metaKey && !e.shiftKey && !e.altKey && e.key === ']') {
       e.preventDefault(); history.forward();
@@ -185,6 +211,8 @@ mod tests {
         let js = get_nav_js();
         assert!(js.contains("e.metaKey"));
         assert!(js.contains("e.altKey"));
+        assert!(js.contains("location.reload"));
+        assert!(js.contains("pacato-dfs"));
         assert!(!js.contains("innerHTML"));
     }
 }

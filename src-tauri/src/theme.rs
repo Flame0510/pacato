@@ -83,6 +83,14 @@ html.pacato-theme #masthead-container [class*="badge"] {
   background: #2A9DB5 !important;
   color: #fff !important;
 }
+/* Subscribe button (unsubscribed) — Pacato accent so the label stays legible */
+html.pacato-theme ytd-subscribe-button-renderer:not([subscribed]) button,
+html.pacato-theme ytd-subscribe-button-renderer:not([subscribed]) button * {
+  background-color: #2A9DB5 !important;
+  color: #FFFFFF !important;
+  --yt-spec-static-brand-white: #2A9DB5 !important;
+  --yt-spec-text-primary: #FFFFFF !important;
+}
 /* Player progress bar */
 html.pacato-theme .ytp-play-progress,
 html.pacato-theme .ytp-swatch-background-color { background: #2A9DB5 !important; }
@@ -154,5 +162,6 @@ mod tests {
         assert!(PACATO_THEME_CSS.contains("--yt-spec-static-brand-red"));
         assert!(PACATO_THEME_CSS.contains("pacato-theme"));
         assert!(PACATO_THEME_CSS.contains("yt-chip-cloud-chip-renderer"));
+        assert!(PACATO_THEME_CSS.contains("subscribe-button"));
     }
 }
